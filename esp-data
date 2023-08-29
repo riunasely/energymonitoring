@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>kWh Monitoring System</title>
+</head>
+<body>
+    <h1>kWh Monitoring System</h1>
+<?php
+
+$servername = "localhost";
+$dbname = "id20767117_esp_data";
+$username = "id20767117_root";
+$password = "Risel0121*";
+
+// Create connection
+$conn = new mysqli($servername, $username, $password, $dbname);
+// Check connection
+if ($conn->connect_error) {
+    die("Connection failed: " . $conn->connect_error);
+} 
+
+$sql = "SELECT id, voltage, current, power, energy, harga, reading_time FROM sensor_data ORDER BY id ASC";
+
+echo '<table border="1" cellspacing="5" cellpadding="5">
+      <tr bgcolor="#FFE4C4" align="center"> 
+        <td><b>ID</b></td> 
+        <td><b>Voltage</b></td> 
+        <td><b>Current</b></td> 
+        <td><b>Power</b></td> 
+        <td><b>Energy</b></td>
+        <td><b>Harga</b></td>
+        <td><b>Timestamp</b></td>
+      </tr>';
+ 
+if ($result = $conn->query($sql)) {
+    while ($row = $result->fetch_assoc()) {
+        $row_id = $row["id"];
+        $row_voltage = $row["voltage"];
+        $row_current = $row["current"];
+        $row_power = $row["power"];
+        $row_energy = $row["energy"]; 
+        $row_harga = $row["harga"];
+        $row_reading_time = $row["reading_time"];
+        $row_reading_time = date("Y-m-d H:i:s", strtotime("$row_reading_time + 7 hours"));
+        
+        echo '<tr align="center"> 
+                <td>' . $row_id . '</td> 
+                <td>' . $row_voltage . '</td> 
+                <td>' . $row_current . '</td> 
+                <td>' . $row_power . '</td> 
+                <td>' . $row_energy . '</td>
+                <td>' . $row_harga . '</td> 
+                <td>' . $row_reading_time . '</td>
+              </tr>';
+    }
+    $result->free();
+}
+
+$conn->close();
+?> 
+</table>
+</body>
+</html>
