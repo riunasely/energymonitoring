@@ -1,0 +1,142 @@
+#include <ESP8266WiFi.h>
+#include <ESP8266HTTPClient.h>
+#include <WiFiClientSecure.h>
+#include <UniversalTelegramBot.h>
+#include <ESP8266WebServer.h>
+#include <LiquidCrystal_I2C.h>
+#include <PZEM004Tv30.h>
+#include <SoftwareSerial.h>
+#include <Wire.h>
+
+#define WIFI_SSID "Indihome"
+#define WIFI_PASSWORD "perluizin"
+#define BOT_TOKEN "5874143638:AAHf2PoFx1xg3l5zAXKVFnRZPKIwKT1KE_k"
+#define serverName "https://kwhmonitoringtri.000webhostapp.com/post-esp-data.php"
+
+byte mac[] = {0xB4, 0x0E, 0xDE, 0xA4, 0x0B, 0x05};
+PZEM004Tv30 pzem(D5, D6);
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+WiFiClientSecure wifiClient;
+UniversalTelegramBot bot(BOT_TOKEN, wifiClient);
+IPAddress ip;
+
+const int RESET_PIN = 0;
+// Masukkan ID user dan admin
+int chatIds[] = {1388217255, 774702581};
+String api_key_value = "tPmAT5Ab3j7F9";
+char server[] = "localhost";
+const int port = 80;
+
+void sendMessageToAll(String message) {
+  for (int i = 0; i < static_cast<int>(sizeof(chatIds) / sizeof(chatIds[0])); i++) {
+    bot.sendMessage(String(chatIds[i]), message);
+  }
+}
+
+void setup() {
+  Serial.begin(115200);
+  //pzemSerial.begin(9600);
+  wifiClient.setInsecure();
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(1000);
+  }  
+  ip = WiFi.localIP();
+  Serial.print("Connected to: ");
+  Serial.print(ip);
+
+  lcd.begin();
+  lcd.backlight();
+  lcd.setCursor(0, 0);
+  lcd.print("Initializing...");
+  delay(2000); lcd.clear();
+  String message = "kWh Monitoring Bot is started!";
+  sendMessageToAll(message);
+  delay(2000); lcd.clear();
+  float energy1 = pzem.resetEnergy();
+}
+
+void loop() {
+  float energy = pzem.energy() * 1000;
+  float harga = energy * 1352.00;
+  float voltage = pzem.voltage();
+  float current = pzem.current();
+  float power = pzem.power();
+
+  if (energy >= 0.000) {
+    lcd.setCursor(0, 0);
+    lcd.print("Energy : ");
+    lcd.print(energy);
+    lcd.print(" Wh");
+    lcd.setCursor(0, 1);
+    lcd.print("Harga : ");
+    lcd.print("Rp ");
+    lcd.print(harga);
+  }
+  else if (energy != NAN) {
+    lcd.setCursor(0, 0);
+    lcd.print("Energy : ");
+    lcd.print(energy);
+    lcd.print(" Wh");
+    lcd.setCursor(0, 1);
+    lcd.print("Harga : ");
+    lcd.print("Rp ");
+    lcd.print(harga);
+  }
+  else {
+    lcd.setCursor(0, 0);
+    lcd.print("Error reading energy");
+  }
+  
+  String message = "Voltage: " + String(voltage) + " V\n" +
+                    "Current: " + String(current) + " A\n" +
+                    "Power: " + String(power) + " W\n" +
+                    "Energy: " + String(energy) + " Wh\n" +
+                    "Harga: "  + "Rp " + String(harga);
+  sendMessageToAll(message);
+  delay(5000); lcd.clear();
+
+  Serial.println(message);
+
+  if (digitalRead(RESET_PIN) == LOW) {
+    delay(2000); lcd.clear();   
+  }
+    
+  if (voltage <= 198.00) {
+    String message = "Voltage is Undervoltage";
+    sendMessageToAll(message);
+  }
+  if (voltage >= 242.00) {
+    String message = "Voltage is Overvoltage";
+    sendMessageToAll(message);
+  }
+  if (current >= 4.00) {
+    String message = "Current is Inrush";
+    sendMessageToAll(message);
+  }
+
+  if (WiFi.status()== WL_CONNECTED) {
+    HTTPClient https;
+
+    https.begin(wifiClient, serverName);
+    https.addHeader("Content-Type", "application/x-www-form-urlencoded");
+    
+    String httpRequestData = "api_key="+api_key_value+"&voltage="+voltage+"&current="+current+"&power="+power+"&energy="+energy+"&harga="+harga;
+    Serial.print("httpRequestData: ");
+    Serial.println(httpRequestData);
+    
+    int httpResponseCode = https.POST(httpRequestData);
+    
+    if (httpResponseCode>0) {
+    Serial.print("HTTP Response Code: ");
+    Serial.println(httpResponseCode);
+    } else {
+      Serial.print("Error code: ");
+      Serial.println(httpResponseCode);
+      }
+    https.end();
+  }
+  else {
+    Serial.println("WiFi Disconnected");
+  }
+}
