@@ -1,0 +1,203 @@
+<?php
+
+$servername = "localhost";
+$dbname = "id20767117_esp_data";
+$username = "id20767117_root";
+$password = "Risel0121*";
+
+// Create connection
+$conn = new mysqli($servername, $username, $password, $dbname);
+// Check connection
+if ($conn->connect_error) {
+    die("Connection failed: " . $conn->connect_error);
+} 
+
+$sql = "SELECT id, voltage, current, power, energy, harga, reading_time FROM sensor_data order by reading_time desc limit 100";
+
+$result = $conn->query($sql);
+
+while ($data = $result->fetch_assoc()){
+    $sensordata[] = $data;
+}
+
+$readings_time = array_column($sensordata, 'reading_time');
+
+
+$i = 0;
+foreach ($readings_time as $reading){
+    $readings_time[$i] = date("Y-m-d H:i:s", strtotime("$reading + 7 hours"));
+    $i += 1;
+}
+
+$voltage = json_encode(array_reverse(array_column($sensordata, 'voltage')), JSON_NUMERIC_CHECK);
+$current = json_encode(array_reverse(array_column($sensordata, 'current')), JSON_NUMERIC_CHECK);
+$power = json_encode(array_reverse(array_column($sensordata, 'power')), JSON_NUMERIC_CHECK);
+$energy = json_encode(array_reverse(array_column($sensordata, 'energy')), JSON_NUMERIC_CHECK);
+$harga = json_encode(array_reverse(array_column($sensordata, 'harga')), JSON_NUMERIC_CHECK);
+$reading_time = json_encode(array_reverse($readings_time), JSON_NUMERIC_CHECK);
+
+/*echo $voltage;
+echo $current;
+echo $power;
+echo $energy;
+echo $harga;
+echo $reading_time;*/
+
+$result->free();
+$conn->close();
+?>
+
+<!DOCTYPE html>
+<html>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://code.highcharts.com/highcharts.js"></script>
+  <style>
+    body {
+      min-width: 310px;
+      max-width: 1300px;
+      height: 500px;
+      margin: 0 auto;
+    }
+    h2 {
+      font-family: Arial Black;
+      font-size: 5rem;
+      text-align: center;
+      
+    }
+  </style>
+  <body>
+    
+    <h1>kWh Monitoring System - Chart Mode</h1>
+    <div id="chart-voltage" class="container"></div>
+    <div id="chart-current" class="container"></div>
+    <div id="chart-power" class="container"></div>
+    <div id="chart-energy" class="container"></div>
+    <div id="chart-harga" class="container"></div>
+
+<script>
+
+var voltage = <?php echo $voltage; ?>;
+var current = <?php echo $current; ?>;
+var power = <?php echo $power; ?>;
+var energy = <?php echo $energy; ?>;
+var harga = <?php echo $harga; ?>;
+var reading_time = <?php echo $reading_time; ?>;
+
+var chartV = new Highcharts.Chart({
+  chart:{ renderTo:'chart-voltage' },
+  title: { text: 'PZEM004T Voltage' },
+  series: [{
+    showInLegend: false,
+    data: voltage
+  }],
+  plotOptions: {
+    line: { animation: false,
+      dataLabels: { enabled: true }
+    },
+    series: { color: '#663399' }
+  },
+  xAxis: {
+    type: 'datetime',
+    categories: reading_time
+  },
+  yAxis: {
+    title: { text: 'Voltage (Volt)' }
+  },
+  credits: { enabled: false }
+});
+
+var chartC = new Highcharts.Chart({
+  chart:{ renderTo:'chart-current' },
+  title: { text: 'PZEM004T Current' },
+  series: [{
+    showInLegend: false,
+    data: current
+  }],
+  plotOptions: {
+    line: { animation: false,
+      dataLabels: { enabled: true }
+    },
+    series: { color: '#B22222' }
+  },
+  xAxis: {
+    type: 'datetime',
+    categories: reading_time
+  },
+  yAxis: {
+    title: { text: 'Current (Ampere)' }
+  },
+  credits: { enabled: false }
+});
+
+var chartP = new Highcharts.Chart({
+  chart:{ renderTo:'chart-power' },
+  title: { text: 'PZEM004Tv30 Power' },
+  series: [{
+    showInLegend: false,
+    data: power
+  }],
+  plotOptions: {
+    line: { animation: false,
+      dataLabels: { enabled: true }
+    },
+    series: { color: '#4169E1' }
+  },
+  xAxis: {
+    type: 'datetime',
+    categories: reading_time
+  },
+  yAxis: {
+    title: { text: 'Power (Watt)' }
+  },
+  credits: { enabled: false }
+});
+
+var chartE = new Highcharts.Chart({
+  chart:{ renderTo : 'chart-energy' },
+  title: { text: 'PZEM004Tv30 Energy' },
+  series: [{
+    showInLegend: false,
+    data: energy
+  }],
+  plotOptions: {
+    line: { animation: false,
+      dataLabels: { enabled: true }
+    },
+    series: { color: '#DB7093' }
+  },
+  xAxis: {
+    type: 'datetime',
+    categories: reading_time
+  },
+  yAxis: {
+    title: { text: 'Energy (kWh)' }
+  },
+  credits: { enabled: false }
+});
+
+var chartH = new Highcharts.Chart({
+  chart:{ renderTo : 'chart-harga' },
+  title: { text: 'PZEM004Tv30 Harga' },
+  series: [{
+    showInLegend: false,
+    data: harga
+  }],
+  plotOptions: {
+    line: { animation: false,
+      dataLabels: { enabled: true }
+    },
+    series: { color: '#FF6347' }
+  },
+  xAxis: {
+    type: 'datetime',
+    categories: reading_time
+  },
+  yAxis: {
+    title: { text: 'Harga (Rp)' }
+  },
+  credits: { enabled: false }
+});
+
+</script>
+</body>
+</html>
